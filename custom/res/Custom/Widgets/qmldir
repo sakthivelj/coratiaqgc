@@ -1,0 +1,5 @@
+Module Custom.Widgets
+
+CustomAttitudeWidget    1.0     CustomAttitudeWidget.qml
+SunJFlyViewOculus       1.0     SunJFlyViewOculus.qml
+SunJFlyViewVideo2       1.0     SunJFlyViewVideo2.qml
