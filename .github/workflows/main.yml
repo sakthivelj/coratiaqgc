@@ -91,16 +91,7 @@ jobs:
         run:  |
               qmake -r ${{ env.SOURCE_DIR }}\qgroundcontrol.pro CONFIG+=installer CONFIG+=${{ env. BUILD_TYPE }}
               ${{ runner.temp }}\jom\jom -j2
-
-      - name: Save installer artifact
-        run: |
-          mkdir -p ${{ github.workspace }}/artifacts
-          copy ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }} ${{ github.workspace }}/artifacts/
-
-      - name: Save PDB artifact
-        run: |
-          mkdir -p ${{ github.workspace }}/artifacts
-          copy ${{ runner.temp }}\shadow_build_dir\staging\qgroundcontrol.pdb ${{ github.workspace }}/artifacts/
+              
 
       # This will set GIT_BRANCH_NAME environment variable
       - name: Git branch name
@@ -129,13 +120,3 @@ jobs:
           asset_name: ${{ env.ARTIFACT }}
           asset_content_type: application/octet-stream
 
-      - name: Upload PDB Asset
-        id: upload-pdb-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/artifacts/qgroundcontrol.pdb
-          asset_name: qgroundcontrol.pdb
-          asset_content_type: application/octet-stream
