@@ -91,7 +91,11 @@ jobs:
         run:  |
               qmake -r ${{ env.SOURCE_DIR }}\qgroundcontrol.pro CONFIG+=installer CONFIG+=${{ env. BUILD_TYPE }}
               ${{ runner.temp }}\jom\jom -j2
-              
+
+      - name: Save installer artifact
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          copy ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }} ${{ github.workspace }}/artifacts/
 
       # This will set GIT_BRANCH_NAME environment variable
       - name: Git branch name
@@ -119,4 +123,3 @@ jobs:
           asset_path: ${{ github.workspace }}/artifacts/${{ env.ARTIFACT }}
           asset_name: ${{ env.ARTIFACT }}
           asset_content_type: application/octet-stream
-
