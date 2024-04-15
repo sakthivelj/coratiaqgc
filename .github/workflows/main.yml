@@ -97,6 +97,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/artifacts
           copy ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }} ${{ github.workspace }}/artifacts/
 
+
       # This will set GIT_BRANCH_NAME environment variable
       - name: Git branch name
         id:   git-branch-name
