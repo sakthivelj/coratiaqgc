@@ -93,35 +93,35 @@ jobs:
               ${{ runner.temp }}\jom\jom -j2
               
 
-      # This will set GIT_BRANCH_NAME environment variable
-      - name: Git branch name
-        id:   git-branch-name
-        uses: EthanSK/git-branch-name-action@v1
+      # # This will set GIT_BRANCH_NAME environment variable
+      # - name: Git branch name
+      #   id:   git-branch-name
+      #   uses: EthanSK/git-branch-name-action@v1
       
       
-      - name: Create Tag
-        uses: actions/create-or-update-tag@v2
-        with:
-          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}  # Replace with your desired versioning scheme
-          sha: ${{ github.sha }}
-          message: Release ${{ github.sha }}-build- ${{ github.run_number }}
+      # - name: Create Tag
+      #   uses: actions/create-or-update-tag@v2
+      #   with:
+      #     tag_name: ${{ github.sha }}-build- ${{ github.run_number }} 
+      #     sha: ${{ github.sha }}
+      #     message: Release ${{ github.sha }}-build- ${{ github.run_number }}
       
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}  # Reference the created tag
-          release_name: Release ${{ env.GIT_BRANCH_NAME }}
-          draft: false
-          prerelease: false
+      # - name: Create Release
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.sha }}-build- ${{ github.run_number }}  # Reference the created tag
+      #     release_name: Release ${{ env.GIT_BRANCH_NAME }}
+      #     draft: false
+      #     prerelease: false
 
       - name: Upload Release Asset
         id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/upload  # actions/upload-release-asset@v1
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           
           upload_url: ${{ steps.create_release.outputs.upload_url }}
