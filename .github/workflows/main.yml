@@ -98,14 +98,24 @@ jobs:
         id:   git-branch-name
         uses: EthanSK/git-branch-name-action@v1
       
+      
+      - name: Create Tag
+        uses: actions/create-or-update-tag@v2
+        with:
+          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}  # Replace with your desired versioning scheme
+          sha: ${{ github.sha }}
+          message: Release ${{ github.sha }}-build- ${{ github.run_number }}
+      
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}
+          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}  # Reference the created tag
           release_name: Release ${{ env.GIT_BRANCH_NAME }}
+          draft: false
+          prerelease: false
 
       - name: Upload Release Asset
         id: upload-release-asset
