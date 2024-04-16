@@ -129,4 +129,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           name: ${{ env.ARTIFACT }}
-          path: ${{ github.workspace }}/artifacts/${{ env.ARTIFACT }}
+          path: ${{ github.workspace }}\artifacts\${{ env.ARTIFACT }}
