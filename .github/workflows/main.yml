@@ -108,6 +108,7 @@ jobs:
           release_name: Release ${{ env.GIT_BRANCH_NAME }}
           draft: false
           prerelease: false
+          allowUpdates: true
 
       - name: Upload Release Asset
         id: upload-release-asset
