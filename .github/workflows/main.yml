@@ -104,7 +104,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.GIT_BRANCH_NAME }}
+          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}
           release_name: Release ${{ env.GIT_BRANCH_NAME }}
           draft: false
           prerelease: false
@@ -116,7 +116,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.sha }}-build- ${{ github.run_number }}
+          
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ github.workspace }}\artifacts\${{ env.ARTIFACT }}
           asset_name: ${{ env.ARTIFACT }}
