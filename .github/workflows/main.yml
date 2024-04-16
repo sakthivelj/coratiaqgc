@@ -120,8 +120,8 @@ jobs:
       - name: Upload Release Asset
         id: upload-release-asset
         uses: ./.github/actions/upload  # actions/upload-release-asset@v1
-        # env:
-        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           
           upload_url: ${{ steps.create_release.outputs.upload_url }}
