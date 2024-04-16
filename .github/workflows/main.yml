@@ -128,5 +128,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: ${{ env.ARTIFACT }}
-          path: ${{ github.workspace }}\artifacts\${{ env.ARTIFACT }}
+          name: Sun-J-installer.exe
+          path: D:\a\_temp\shadow_build_dir\staging\Sun-J-installer.exe
