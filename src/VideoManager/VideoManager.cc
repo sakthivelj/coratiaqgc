@@ -341,7 +341,7 @@ VideoManager::grabImage(const QString& imageFile)
         _imageFile += "/" + QDateTime::currentDateTime().toString("yyyy-MM-dd_hh.mm.ss.zzz") + ".jpg";
     } else {
         _imageFile = imageFile;
-        _imageFile2 = imageFile;
+        _imageFile2 = "2_" + imageFile;
     }
 
     emit imageFileChanged();

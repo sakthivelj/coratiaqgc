@@ -111,7 +111,7 @@ Rectangle {
                     _mavlinkCamera.takePhoto()
                 }
             }
-        } else if (_onlySimpleCameraAvailable || (_simpleCameraAvailable && _anyVideoStreamAvailable && _videoStreamInPhotoMode && !videoGrabRadio.checked)) {
+        } else if (_onlySimpleCameraAvailable || (_simpleCameraAvailable && _anyVideoStreamAvailable && _videoStreamInPhotoMode /*&& !videoGrabRadio.checked*/)) {
             _simplePhotoCaptureIsIdle = false
             _activeVehicle.triggerSimpleCamera()
             simplePhotoCaptureTimer.start()
