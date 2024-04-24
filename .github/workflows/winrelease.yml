@@ -1,128 +1,92 @@
-name: Windows Release
+name: Windows
 
 on:
   push:
     branches:
-      - 'master'
+      - master
       - 'Stable*'
     tags:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - 'android/**'
   pull_request:
-    branches:
-      - '*'
-
-defaults:
-  run:
-    shell: cmd
-
-env:
-  SOURCE_DIR:   ${{ github.workspace }}
-  QT_VERSION:   5.15.2
-  ARTIFACT:     QGroundControl-installer.exe
-  BUILD_TYPE:   ${{ fromJSON('["DailyBuild", "StableBuild"]')[ github.ref_type == 'tag' || contains(github.ref, 'Stable_' ) ] }}
+    paths-ignore:
+      - 'docs/**'
+      - 'android/**'
 
 jobs:
   build:
-    runs-on:  windows-2019
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        BuildType: [Debug, Release]
+
+    defaults:
+      run:
+        shell: cmd
+
+    env:
+      QT_VERSION: 6.6.3
+      ARTIFACT: Sun-J-installer.exe
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-tags: true
 
-      - name: Get all tags for correct version determination
-        working-directory:  ${{ github.workspace }}
-        run: |
-          git fetch --all --tags -f
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v3
         with:
-          version:      ${{ env.QT_VERSION }}
-          host:         windows
-          target:       desktop
-          arch:         win64_msvc2019_64
-          dir:          ${{ runner.temp }}
-          modules:      qtcharts
-          setup-python: false
-
-      - name: Download JOM
-        uses: suisei-cn/actions-download-file@v1.4.0
-        with:
-          url:    http://download.qt.io/official_releases/jom/jom.zip
-          target: ${{ runner.temp }}\
-          retry-times: 10
-
-      - name: Unzip JOM
-        working-directory: ${{ runner.temp }}
-        run:  |
-              7z x jom.zip -ojom
-      - name: Download Gstreamer
-        uses: suisei-cn/actions-download-file@v1.4.0
-        with:
-          url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-msvc-x86_64-1.18.1.msi
-          target: ${{ runner.temp }}\
-          retry-times: 10
-
-      - name: Download Gstreamer dev
-        uses: suisei-cn/actions-download-file@v1.4.0
-        with:
-          url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-devel-msvc-x86_64-1.18.1.msi
-          target: ${{ runner.temp }}\
-          retry-times: 10
+          version: ${{ env.QT_VERSION }}
+          aqtversion: ==3.1.*
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          dir: ${{ runner.temp }}
+          modules: qtcharts qtlocation qtpositioning qtspeech qt5compat qtmultimedia qtserialport qtimageformats qtshadertools qtconnectivity qtquick3d
+          setup-python: true
+          cache: ${{ github.ref == 'refs/heads/master' && github.event_name != 'pull_request' }}
 
       - name: Install Gstreamer
-        run:  |
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.18.1.msi /passive ADDLOCAL=ALL
-            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.18.1.msi /passive ADDLOCAL=ALL
-      - name: Create build directory
-        run:  mkdir ${{ runner.temp }}\shadow_build_dir
+        uses: blinemedical/setup-gstreamer@v1
+        with:
+          version: 1.18.6
+        # run: choco install --no-progress gstreamer gstreamer-devel --version=1.18.6
+
+      - name: Install Dependencies
+        run: choco install --no-progress ninja -y
 
       - name: Set up Visual Studio shell
-        uses: egor-tensin/vs-shell@v2
+        uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
+      - name: Create build directory
+        run: mkdir ${{ runner.temp }}\shadow_build_dir
+
+      - name: Configure
+        working-directory: ${{ runner.temp }}\shadow_build_dir
+        run: cmake -S ${{ github.workspace }} -B . -G Ninja ^
+              -DCMAKE_BUILD_TYPE=${{ matrix.BuildType }} ^
+              -DQGC_STABLE_BUILD=${{ github.ref_type == 'tag' || contains(github.ref, 'Stable') && 'ON' || 'OFF' }}
+
       - name: Build
         working-directory: ${{ runner.temp }}\shadow_build_dir
-        run:  |
-              qmake -r ${{ env.SOURCE_DIR }}\qgroundcontrol.pro CONFIG+=installer CONFIG+=${{ env. BUILD_TYPE }}
-              ${{ runner.temp }}\jom\jom -j2
-              
-      # # This will set GIT_BRANCH_NAME environment variable
-      # - name: Git branch name
-      #   id:   git-branch-name
-      #   uses: EthanSK/git-branch-name-action@v1
+        run: cmake --build . --target all --config ${{ matrix.BuildType }}
 
-      # - name: Create Release
-      #   id: create_release
-      #   uses: actions/create-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ env.GIT_BRANCH_NAME }}
-      #     release_name: Release ${{ env.GIT_BRANCH_NAME }}
-      #     draft: false
-      #     prerelease: false
+      - name: Install
+        working-directory: ${{ runner.temp }}\shadow_build_dir
+        run: cmake --install . --config ${{ matrix.BuildType }}
 
-
-      # - name: Upload Release Asset
-      #   id: upload-release-asset
-      #   uses: actions/upload-release-asset@v1
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     upload_url: ${{ needs.Make_GitHub_Release.outputs.upload_url }}
-      #     # upload_url: ${{ steps.create_release.outputs.upload_url }}
-      #     asset_path: ${{ github.workspace }}/artifacts/${{ env.ARTIFACT }}
-      #     asset_name: ${{ env.ARTIFACT }}
-      #     asset_content_type: application/octet-stream
-      
-      
       - name: Upload release asset  
         id: upload-release-asset
         uses: actions/upload-artifact@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: Sun-J-installer.exe
-          path: D:\a\_temp\shadow_build_dir\staging\Sun-J-installer.exe
+          name: ${{ env.ARTIFACT }}
+          path: ${{ runner.temp }}\shadow_build_dir\staging\Sun-J-installer.exe
