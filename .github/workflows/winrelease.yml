@@ -1,87 +1,103 @@
-name: Windows
+name: Windows Release
 
 on:
   push:
     branches:
-      - master
+      - 'master'
       - 'Stable*'
     tags:
       - 'v*'
-    paths-ignore:
-      - 'docs/**'
-      - 'android/**'
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - 'android/**'
+    branches:
+    - '*'
+
+defaults:
+  run:
+    shell: cmd
+
+env:
+  SOURCE_DIR:   ${{ github.workspace }}
+  QT_VERSION:   5.15.2
+  ARTIFACT:     Sun-J-installer.exe
+  BUILD_TYPE:   ${{ fromJSON('["DailyBuild", "StableBuild"]')[ github.ref_type == 'tag' || contains(github.ref, 'Stable_' ) ] }}
 
 jobs:
   build:
-    runs-on: windows-latest
-
-    strategy:
-      matrix:
-        BuildType: [Debug, Release]
-
-    defaults:
-      run:
-        shell: cmd
-
-    env:
-      QT_VERSION: 6.6.3
-      ARTIFACT: Sun-J-installer.exe
+    runs-on:  windows-2019
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-          fetch-tags: true
+
+      - name: Get all tags for correct version determination
+        working-directory:  ${{ github.workspace }}
+        run: |
+          git fetch --all --tags -f
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@v2
         with:
-          version: ${{ env.QT_VERSION }}
-          aqtversion: ==3.1.*
-          host: windows
-          target: desktop
-          arch: win64_msvc2019_64
-          dir: ${{ runner.temp }}
-          modules: qtcharts qtlocation qtpositioning qtspeech qt5compat qtmultimedia qtserialport qtimageformats qtshadertools qtconnectivity qtquick3d
-          setup-python: true
-          cache: ${{ github.ref == 'refs/heads/master' && github.event_name != 'pull_request' }}
+          version:      ${{ env.QT_VERSION }}
+          host:         windows
+          target:       desktop
+          arch:         win64_msvc2019_64
+          dir:          ${{ runner.temp }}
+          modules:      qtcharts
+          setup-python: false
+
+      - name: Download JOM
+        uses: suisei-cn/actions-download-file@v1.4.0
+        with:
+          url:    http://download.qt.io/official_releases/jom/jom.zip
+          target: ${{ runner.temp }}\
+          retry-times: 10
+
+      - name: Unzip JOM
+        working-directory: ${{ runner.temp }}
+        run:  |
+              7z x jom.zip -ojom
+
+      - name: Download Gstreamer
+        uses: suisei-cn/actions-download-file@v1.4.0
+        with:
+          url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-msvc-x86_64-1.18.1.msi
+          target: ${{ runner.temp }}\
+          retry-times: 10
+
+      - name: Download Gstreamer dev
+        uses: suisei-cn/actions-download-file@v1.4.0
+        with:
+          url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-devel-msvc-x86_64-1.18.1.msi
+          target: ${{ runner.temp }}\
+          retry-times: 10
 
       - name: Install Gstreamer
-        uses: blinemedical/setup-gstreamer@v1
-        with:
-          version: 1.18.6
-        # run: choco install --no-progress gstreamer gstreamer-devel --version=1.18.6
+        run:  |
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-msvc-x86_64-1.18.1.msi /passive ADDLOCAL=ALL
+            cmd /c start /wait msiexec /package ${{ runner.temp }}\gstreamer-1.0-devel-msvc-x86_64-1.18.1.msi /passive ADDLOCAL=ALL
 
-      - name: Install Dependencies
-        run: choco install --no-progress ninja -y
+      - name: Create build directory
+        run:  mkdir ${{ runner.temp }}\shadow_build_dir
 
       - name: Set up Visual Studio shell
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: egor-tensin/vs-shell@v2
         with:
           arch: x64
 
-      - name: Create build directory
-        run: mkdir ${{ runner.temp }}\shadow_build_dir
-
-      - name: Configure
-        working-directory: ${{ runner.temp }}\shadow_build_dir
-        run: cmake -S ${{ github.workspace }} -B . -G Ninja ^
-              -DCMAKE_BUILD_TYPE=${{ matrix.BuildType }} ^
-              -DQGC_STABLE_BUILD=${{ github.ref_type == 'tag' || contains(github.ref, 'Stable') && 'ON' || 'OFF' }}
-
       - name: Build
         working-directory: ${{ runner.temp }}\shadow_build_dir
-        run: cmake --build . --target all --config ${{ matrix.BuildType }}
+        run:  |
+              qmake -r ${{ env.SOURCE_DIR }}\qgroundcontrol.pro CONFIG+=installer CONFIG+=${{ env. BUILD_TYPE }}
+              ${{ runner.temp }}\jom\jom -j2
 
-      - name: Install
-        working-directory: ${{ runner.temp }}\shadow_build_dir
-        run: cmake --install . --config ${{ matrix.BuildType }}
-
+      - name: Save installer artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }}
+          
       - name: Upload release asset  
         id: upload-release-asset
         uses: actions/upload-artifact@v4
@@ -89,4 +105,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           name: ${{ env.ARTIFACT }}
-          path: ${{ runner.temp }}\shadow_build_dir\staging\Sun-J-installer.exe
+          path: ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }}
