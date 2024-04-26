@@ -7,9 +7,15 @@ on:
       - 'Stable*'
     tags:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/**'
   pull_request:
     branches:
-      - '*'
+    - '*'
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/**'
 
 defaults:
   run:
@@ -18,7 +24,7 @@ defaults:
 env:
   SOURCE_DIR:   ${{ github.workspace }}
   QT_VERSION:   5.15.2
-  ARTIFACT:     QGroundControl-installer.exe
+  ARTIFACT:     Sun-J-installer.exe
   BUILD_TYPE:   ${{ fromJSON('["DailyBuild", "StableBuild"]')[ github.ref_type == 'tag' || contains(github.ref, 'Stable_' ) ] }}
 
 jobs:
@@ -27,17 +33,17 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Get all tags for correct version determination
         working-directory:  ${{ github.workspace }}
         run: |
-          git fetch --all --tags -f
+          git fetch --all --tags -f --depth 1
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v3
         with:
           version:      ${{ env.QT_VERSION }}
           host:         windows
@@ -48,11 +54,10 @@ jobs:
           setup-python: false
 
       - name: Download JOM
-        uses: suisei-cn/actions-download-file@v1.4.0
+        uses: suisei-cn/actions-download-file@v1.3.0
         with:
           url:    http://download.qt.io/official_releases/jom/jom.zip
           target: ${{ runner.temp }}\
-          retry-times: 10
 
       - name: Unzip JOM
         working-directory: ${{ runner.temp }}
@@ -60,18 +65,16 @@ jobs:
               7z x jom.zip -ojom
 
       - name: Download Gstreamer
-        uses: suisei-cn/actions-download-file@v1.4.0
+        uses: suisei-cn/actions-download-file@v1.3.0
         with:
           url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-msvc-x86_64-1.18.1.msi
           target: ${{ runner.temp }}\
-          retry-times: 10
 
       - name: Download Gstreamer dev
-        uses: suisei-cn/actions-download-file@v1.4.0
+        uses: suisei-cn/actions-download-file@v1.3.0
         with:
           url:    https://s3-us-west-2.amazonaws.com/qgroundcontrol/dependencies/gstreamer-1.0-devel-msvc-x86_64-1.18.1.msi
           target: ${{ runner.temp }}\
-          retry-times: 10
 
       - name: Install Gstreamer
         run:  |
@@ -91,32 +94,15 @@ jobs:
         run:  |
               qmake -r ${{ env.SOURCE_DIR }}\qgroundcontrol.pro CONFIG+=installer CONFIG+=${{ env. BUILD_TYPE }}
               ${{ runner.temp }}\jom\jom -j2
-              
 
-      # This will set GIT_BRANCH_NAME environment variable
-      - name: Git branch name
-        id:   git-branch-name
-        uses: EthanSK/git-branch-name-action@v1
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Save installer artifact
+        uses: actions/upload-artifact@master
         with:
-          tag_name: ${{ env.GIT_BRANCH_NAME }}
-          release_name: Release ${{ env.GIT_BRANCH_NAME }}
-          draft: false
-          prerelease: false
-          allowUpdates: true
+          name: ${{ env.ARTIFACT }}
+          path: ${{ runner.temp }}\shadow_build_dir\staging\${{ env.ARTIFACT }}
 
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}\artifacts\${{ env.ARTIFACT }}
-          asset_name: ${{ env.ARTIFACT }}
-          asset_content_type: application/octet-stream
+      # - name: Save PDB artifact
+      #   uses: actions/upload-artifact@master
+      #   with:
+      #     name: qgroundcontrol.pdb
+      #     path: ${{ runner.temp }}\shadow_build_dir\staging\qgroundcontrol.pdb
